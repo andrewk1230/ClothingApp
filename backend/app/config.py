@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     clip_model: str = "ViT-B-32"
     clip_pretrained: str = "openai"
-    yolo_weights_path: str = "app/ml/weights/yolov8_fashion.pt"
+    yolo_weights_path: str = "app/ml/weights/deepfashion2_yolov8s-seg.pt"
 
     ebay_client_id: str = ""
     ebay_client_secret: str = ""

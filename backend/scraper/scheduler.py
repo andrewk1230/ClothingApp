@@ -1,31 +1,39 @@
+import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 _scheduler = None
 
 
 def start_scheduler():
-    """Start the APScheduler with eBay API ingestion and cleanup jobs."""
     global _scheduler
     _scheduler = AsyncIOScheduler()
 
-    # TODO: Phase 2 — add eBay API ingestion job
-    # _scheduler.add_job(
-    #     ingest_new_listings,
-    #     "interval",
-    #     minutes=settings.ingest_interval_minutes,
-    # )
+    from scraper.ingest import ingest_new_listings
+    _scheduler.add_job(
+        ingest_new_listings,
+        "interval",
+        minutes=settings.ingest_interval_minutes,
+        id="ingest_new_listings",
+        name="Ingest new eBay listings",
+    )
 
-    # TODO: Phase 2 — add daily cleanup job
-    # _scheduler.add_job(
-    #     cleanup_stale_listings,
-    #     "cron",
-    #     hour=settings.cleanup_hour,
-    # )
+    from scraper.cleanup import run_cleanup
+    _scheduler.add_job(
+        run_cleanup,
+        "cron",
+        hour=settings.cleanup_hour,
+        id="cleanup_stale_listings",
+        name="Cleanup stale listings",
+    )
 
     _scheduler.start()
-    print("Scheduler started")
+    logger.info("Scheduler started: ingest every %d min, cleanup at %d:00",
+                settings.ingest_interval_minutes, settings.cleanup_hour)
 
 
 def stop_scheduler():

@@ -1,15 +1,10 @@
-import numpy as np
 from PIL import Image
 
+from app.ml import clip_model
 from app.schemas.search import BoundingBox
 
 
 async def generate_embedding(image: Image.Image, bbox: BoundingBox | None = None) -> list[float]:
-    """Generate a CLIP embedding for an image region.
-
-    If bbox is provided, crops the image to that region first.
-    Returns a 512-dimensional embedding vector.
-    """
     if bbox:
         image = image.crop((
             int(bbox.x),
@@ -18,5 +13,4 @@ async def generate_embedding(image: Image.Image, bbox: BoundingBox | None = None
             int(bbox.y + bbox.h),
         ))
 
-    # TODO: Phase 1 — load CLIP model, preprocess image, run inference
-    return [0.0] * 512
+    return clip_model.encode_image(image)

@@ -1,21 +1,28 @@
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _model = None
 
-CATEGORY_MAP = {
-    0: "top",
-    1: "outerwear",
-    2: "bottom",
-    3: "dress",
-    4: "footwear",
-    5: "bag",
-    6: "hat",
-    7: "jewelry",
-    8: "eyewear",
-    9: "scarf",
-    10: "belt",
-    11: "socks",
+# DeepFashion2 class IDs → our simplified taxonomy
+DEEPFASHION2_MAP = {
+    0: "top",           # short_sleeve_top
+    1: "top",           # long_sleeve_top
+    2: "outerwear",     # short_sleeve_outwear
+    3: "outerwear",     # long_sleeve_outwear
+    4: "top",           # vest
+    5: "top",           # sling
+    6: "bottom",        # shorts
+    7: "bottom",        # trousers
+    8: "bottom",        # skirt
+    9: "dress",         # short_sleeve_dress
+    10: "dress",        # long_sleeve_dress
+    11: "dress",        # vest_dress
+    12: "dress",        # sling_dress
 }
+
+CATEGORY_MAP = DEEPFASHION2_MAP
 
 
 def load_yolo(weights_path: str):
@@ -26,11 +33,11 @@ def load_yolo(weights_path: str):
 
     path = Path(weights_path)
     if not path.exists():
-        print(f"WARNING: YOLOv8 weights not found at {weights_path}. Segmentation disabled.")
+        logger.warning("YOLOv8 weights not found at %s. Segmentation disabled.", weights_path)
         return
 
     _model = YOLO(str(path))
-    print(f"YOLOv8 loaded from {weights_path}")
+    logger.info("YOLOv8 loaded from %s", weights_path)
 
 
 def detect(image, confidence_threshold: float = 0.3) -> list[dict]:

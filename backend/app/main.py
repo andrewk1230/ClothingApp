@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,22 +6,24 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # TODO: Phase 1 — load ML models into GPU memory
-    # from app.ml.clip_model import load_clip
-    # from app.ml.yolo_model import load_yolo
-    # load_clip(settings.clip_model, settings.clip_pretrained)
-    # load_yolo(settings.yolo_weights_path)
+    from app.ml.clip_model import load_clip
+    from app.ml.yolo_model import load_yolo
+    from scraper.scheduler import start_scheduler, stop_scheduler
 
-    # TODO: Phase 2 — start APScheduler for scraping
-    # from app.scraper.scheduler import start_scheduler
-    # start_scheduler()
+    load_clip(settings.clip_model, settings.clip_pretrained)
+    load_yolo(settings.yolo_weights_path)
+    start_scheduler()
 
-    print("GrailSeeker API started")
+    logger.info("GrailSeeker API started")
     yield
-    print("GrailSeeker API shutting down")
+
+    stop_scheduler()
+    logger.info("GrailSeeker API shutting down")
 
 
 app = FastAPI(

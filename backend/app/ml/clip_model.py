@@ -1,6 +1,10 @@
-import torch
+import logging
+
 import open_clip
+import torch
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 _model = None
 _preprocess = None
@@ -9,7 +13,6 @@ _device = None
 
 
 def load_clip(model_name: str = "ViT-B-32", pretrained: str = "openai"):
-    """Load CLIP model into GPU memory (singleton)."""
     global _model, _preprocess, _tokenizer, _device
 
     _device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -18,7 +21,7 @@ def load_clip(model_name: str = "ViT-B-32", pretrained: str = "openai"):
     )
     _tokenizer = open_clip.get_tokenizer(model_name)
     _model.eval()
-    print(f"CLIP {model_name} loaded on {_device}")
+    logger.info("CLIP %s loaded on %s", model_name, _device)
 
 
 def encode_image(image: Image.Image) -> list[float]:

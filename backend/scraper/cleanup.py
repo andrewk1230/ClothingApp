@@ -35,3 +35,9 @@ async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1):
 
     await db.commit()
     print(f"Cleanup: checked {len(listings)}, deactivated {deactivated}")
+
+
+async def run_cleanup():
+    from app.database import async_session
+    async with async_session() as db:
+        await cleanup_stale_listings(db)
