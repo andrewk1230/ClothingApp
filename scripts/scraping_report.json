@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-06-25T09:21:24.042479+00:00",
+  "results": [
+    {
+      "platform": "depop",
+      "stealth_mode": "default",
+      "passed": false,
+      "pages_attempted": 4,
+      "pages_loaded": 0,
+      "listings_scraped": 0,
+      "fields_extracted": [],
+      "blocked_at_request": null,
+      "block_type": null,
+      "errors": [],
+      "sample_listings": []
+    },
+    {
+      "platform": "depop",
+      "stealth_mode": "stealth",
+      "passed": true,
+      "pages_attempted": 4,
+      "pages_loaded": 1,
+      "listings_scraped": 20,
+      "fields_extracted": [
+        "image_url",
+        "listing_url"
+      ],
+      "blocked_at_request": null,
+      "block_type": null,
+      "errors": [],
+      "sample_listings": [
+        {
+          "platform": "depop",
+          "listing_url": "https://www.depop.com/products/laurynmarsxall-pink-fleece-jacket-with-zipper-5c06/",
+          "image_url": "https://media-photos.depop.com/r1/20433911/4026420376_1eb71b68546849cb9b73188d70b97125/P10.jpg",
+          "title": "",
+          "price": "",
+          "description": "",
+          "seller": "",
+          "size": "",
+          "scraped_at": "2026-06-25T09:20:43.423773+00:00"
+        },
+        {
+          "platform": "depop",
+          "listing_url": "https://www.depop.com/products/justflowrthreads-vintage-global-g-iii-classic-genuine-4b3a/",
+          "image_url": "https://media-photos.depop.com/b1/43734794/4025239653_31613761c2cd4601b91bd6a8fd81f4c2/P10.jpg",
+          "title": "",
+          "price": "",
+          "description": "",
+          "seller": "",
+          "size": "",
+          "scraped_at": "2026-06-25T09:20:43.430657+00:00"
+        },
+        {
+          "platform": "depop",
+          "listing_url": "https://www.depop.com/products/alainas14-vintage-navy-blue-jacket-073d/",
+          "image_url": "https://media-photos.depop.com/r1/28060916/4023313110_6f273fc160504acaaa67dfc70408af12/P10.jpg",
+          "title": "",
+          "price": "",
+          "description": "",
+          "seller": "",
+          "size": "",
+          "scraped_at": "2026-06-25T09:20:43.437022+00:00"
+        }
+      ]
+    },
+    {
+      "platform": "ebay",
+      "stealth_mode": "default",
+      "passed": false,
+      "pages_attempted": 3,
+      "pages_loaded": 0,
+      "listings_scraped": 0,
+      "fields_extracted": [],
+      "blocked_at_request": null,
+      "block_type": null,
+      "errors": [],
+      "sample_listings": []
+    },
+    {
+      "platform": "ebay",
+      "stealth_mode": "stealth",
+      "passed": false,
+      "pages_attempted": 3,
+      "pages_loaded": 0,
+      "listings_scraped": 0,
+      "fields_extracted": [],
+      "blocked_at_request": null,
+      "block_type": null,
+      "errors": [],
+      "sample_listings": []
+    }
+  ]
+}
