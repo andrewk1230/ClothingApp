@@ -35,6 +35,6 @@ export const colors = {
 
 export type ThemeColors = typeof colors.light;
 
-export function getColors(scheme: "light" | "dark" | null | undefined): ThemeColors {
+export function getColors(scheme: string | null | undefined): ThemeColors {
   return colors[scheme === "dark" ? "dark" : "light"];
 }
