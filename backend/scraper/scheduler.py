@@ -6,15 +6,15 @@ _scheduler = None
 
 
 def start_scheduler():
-    """Start the APScheduler with scraping and cleanup jobs."""
+    """Start the APScheduler with eBay API ingestion and cleanup jobs."""
     global _scheduler
     _scheduler = AsyncIOScheduler()
 
-    # TODO: Phase 2 — add scraping job
+    # TODO: Phase 2 — add eBay API ingestion job
     # _scheduler.add_job(
-    #     scrape_and_embed_newest,
+    #     ingest_new_listings,
     #     "interval",
-    #     minutes=settings.scrape_interval_minutes,
+    #     minutes=settings.ingest_interval_minutes,
     # )
 
     # TODO: Phase 2 — add daily cleanup job

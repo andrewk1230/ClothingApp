@@ -27,7 +27,7 @@ const slides = [
   },
   {
     title: "Shop",
-    description: "Find matching items on Depop, eBay, and more",
+    description: "Find matching items on eBay and more",
     icon: "🛍️",
   },
 ];

@@ -15,8 +15,12 @@ class Settings(BaseSettings):
     clip_pretrained: str = "openai"
     yolo_weights_path: str = "app/ml/weights/yolov8_fashion.pt"
 
-    scrape_interval_minutes: int = 30
-    scrape_delay_seconds: int = 2
+    ebay_client_id: str = ""
+    ebay_client_secret: str = ""
+    ebay_api_url: str = "https://api.ebay.com"
+    ebay_auth_url: str = "https://api.ebay.com"
+
+    ingest_interval_minutes: int = 30
     cleanup_hour: int = 3
 
     guest_daily_limit: int = 5

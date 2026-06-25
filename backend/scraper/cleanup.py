@@ -1,15 +1,17 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.listing import Listing
-from app.services.listing_checker import check_listing_active
+from scraper.ebay_api import check_item_active
 
 
 async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1):
-    """Check oldest batch of listings for staleness and deactivate dead ones."""
-    total = await db.scalar(select(Listing.id).where(Listing.is_active).count())
+    """Check oldest batch of listings via eBay API and deactivate ended ones."""
+    count_stmt = select(Listing.id).where(Listing.is_active == True)
+    result = await db.execute(count_stmt)
+    total = len(result.all())
     if not total:
         return
 
@@ -25,8 +27,8 @@ async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1):
 
     deactivated = 0
     for listing in listings:
-        is_active = await check_listing_active(listing.listing_url)
-        listing.last_checked_at = datetime.utcnow()
+        is_active = await check_item_active(listing.platform_id)
+        listing.last_checked_at = datetime.now(timezone.utc)
         if not is_active:
             listing.is_active = False
             deactivated += 1
