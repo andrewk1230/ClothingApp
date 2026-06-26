@@ -14,6 +14,7 @@ from app.services.vector_search import find_similar_listings
 router = APIRouter(prefix="/api/v1/search", tags=["search"])
 
 MAX_IMAGE_BYTES = settings.max_image_size_mb * 1024 * 1024
+ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 
 
 async def _read_upload_image(image: UploadFile) -> Image.Image:
@@ -21,9 +22,14 @@ async def _read_upload_image(image: UploadFile) -> Image.Image:
     if len(contents) > MAX_IMAGE_BYTES:
         raise HTTPException(413, f"Image exceeds {settings.max_image_size_mb}MB limit")
     try:
-        img = Image.open(BytesIO(contents)).convert("RGB")
+        img = Image.open(BytesIO(contents))
     except Exception:
         raise HTTPException(400, "Invalid image file")
+
+    if img.format not in ALLOWED_FORMATS:
+        raise HTTPException(415, "Unsupported image format. Use JPEG, PNG, or WebP.")
+
+    img = img.convert("RGB")
 
     max_dim = settings.max_image_dimension
     if max(img.size) > max_dim:

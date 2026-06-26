@@ -14,6 +14,8 @@ interface ListingResult {
   image_url: string;
   price: number | null;
   currency: string;
+  size: string | null;
+  condition: string | null;
   platform: string;
   listing_url: string;
   similarity: number;
@@ -42,7 +44,7 @@ export function useSearch() {
       const response = await api.post("/api/v1/search/segment", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setItems(response.data.items);
+      setItems(response.data.items ?? []);
     } catch (e: any) {
       setError(e.message || "Failed to analyze image");
     } finally {
@@ -78,7 +80,7 @@ export function useSearch() {
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-      setResults(response.data.results);
+      setResults(response.data.results ?? []);
     } catch (e: any) {
       setError(e.message || "Search failed");
     } finally {

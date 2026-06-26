@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -24,4 +25,4 @@ class SearchHistoryEntry(BaseModel):
     category: str | None
     bbox: dict | None
     result_count: int
-    created_at: str
+    created_at: datetime

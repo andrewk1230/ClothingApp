@@ -5,7 +5,7 @@ from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.listing import Base
+from app.models.listing import Base, _utcnow
 
 
 class SavedItem(Base):
@@ -17,4 +17,4 @@ class SavedItem(Base):
     listing_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE")
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

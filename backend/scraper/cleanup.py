@@ -1,24 +1,32 @@
+import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.listing import Listing
 from scraper.ebay_api import check_item_active
 
+logger = logging.getLogger(__name__)
 
-async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1):
-    """Check oldest batch of listings via eBay API and deactivate ended ones."""
-    count_stmt = select(Listing.id).where(Listing.is_active == True)
-    result = await db.execute(count_stmt)
-    total = len(result.all())
+
+async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1, max_batch: int = 800):
+    """Check oldest batch of listings via eBay API and deactivate ended ones.
+
+    Batch size is the smaller of batch_pct of active listings and max_batch, to
+    stay within the eBay API daily call budget (PRD §7.3 allots ~20% of 5,000/day
+    to background cleanup).
+    """
+    total = await db.scalar(
+        select(func.count()).select_from(Listing).where(Listing.is_active.is_(True))
+    )
     if not total:
         return
 
-    batch_size = max(int(total * batch_pct), 10)
+    batch_size = min(max(int(total * batch_pct), 10), max_batch)
     stmt = (
         select(Listing)
-        .where(Listing.is_active == True)
+        .where(Listing.is_active.is_(True))
         .order_by(Listing.scraped_at.asc())
         .limit(batch_size)
     )
@@ -34,7 +42,7 @@ async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1):
             deactivated += 1
 
     await db.commit()
-    print(f"Cleanup: checked {len(listings)}, deactivated {deactivated}")
+    logger.info("Cleanup: checked %d, deactivated %d", len(listings), deactivated)
 
 
 async def run_cleanup():

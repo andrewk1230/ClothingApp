@@ -20,6 +20,9 @@ def start_scheduler():
         minutes=settings.ingest_interval_minutes,
         id="ingest_new_listings",
         name="Ingest new eBay listings",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
     )
 
     from scraper.cleanup import run_cleanup
@@ -29,6 +32,9 @@ def start_scheduler():
         hour=settings.cleanup_hour,
         id="cleanup_stale_listings",
         name="Cleanup stale listings",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
     )
 
     _scheduler.start()

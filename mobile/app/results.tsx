@@ -15,6 +15,8 @@ interface ListingResult {
   image_url: string;
   price: number | null;
   currency: string;
+  size: string | null;
+  condition: string | null;
   platform: string;
   listing_url: string;
   similarity: number;

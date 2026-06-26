@@ -34,18 +34,25 @@ def main():
     print(f"Downloading DeepFashion2 YOLOv8s-seg weights from HuggingFace...")
     print(f"URL: {WEIGHTS_URL}")
 
-    with httpx.stream("GET", WEIGHTS_URL, follow_redirects=True, timeout=120.0) as resp:
-        resp.raise_for_status()
-        total = int(resp.headers.get("content-length", 0))
-        downloaded = 0
+    tmp_file = WEIGHTS_FILE.with_suffix(WEIGHTS_FILE.suffix + ".tmp")
+    try:
+        with httpx.stream("GET", WEIGHTS_URL, follow_redirects=True, timeout=120.0) as resp:
+            resp.raise_for_status()
+            total = int(resp.headers.get("content-length", 0))
+            downloaded = 0
 
-        with open(WEIGHTS_FILE, "wb") as f:
-            for chunk in resp.iter_bytes(chunk_size=8192):
-                f.write(chunk)
-                downloaded += len(chunk)
-                if total:
-                    pct = downloaded / total * 100
-                    print(f"\r  {downloaded / 1e6:.1f} / {total / 1e6:.1f} MB ({pct:.0f}%)", end="", flush=True)
+            with open(tmp_file, "wb") as f:
+                for chunk in resp.iter_bytes(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        pct = downloaded / total * 100
+                        print(f"\r  {downloaded / 1e6:.1f} / {total / 1e6:.1f} MB ({pct:.0f}%)", end="", flush=True)
+
+        os.replace(tmp_file, WEIGHTS_FILE)
+    except BaseException:
+        tmp_file.unlink(missing_ok=True)
+        raise
 
     print(f"\nSaved to {WEIGHTS_FILE}")
     print(f"File size: {WEIGHTS_FILE.stat().st_size / 1e6:.1f} MB")

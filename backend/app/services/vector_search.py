@@ -15,14 +15,12 @@ async def find_similar_listings(
     min_price: float | None = None,
     max_price: float | None = None,
 ) -> list[ListingResult]:
-    embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
-
     stmt = (
         select(
             Listing,
-            (1 - Listing.embedding.cosine_distance(embedding_str)).label("similarity"),
+            (1 - Listing.embedding.cosine_distance(query_embedding)).label("similarity"),
         )
-        .where(Listing.is_active == True)
+        .where(Listing.is_active.is_(True))
     )
 
     if min_price is not None:
@@ -30,7 +28,7 @@ async def find_similar_listings(
     if max_price is not None:
         stmt = stmt.where(Listing.price <= max_price)
 
-    stmt = stmt.order_by(Listing.embedding.cosine_distance(embedding_str)).limit(limit)
+    stmt = stmt.order_by(Listing.embedding.cosine_distance(query_embedding)).limit(limit)
 
     result = await db.execute(stmt)
     rows = result.all()

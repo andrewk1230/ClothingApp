@@ -59,10 +59,10 @@ async def embed_and_store(listings: list[ScrapedListing]) -> tuple[int, int]:
                 category=listing.category,
                 embedding=embedding,
                 scraped_at=listing.scraped_at,
-            ).on_conflict_do_nothing(index_elements=["platform_id"])
+            ).on_conflict_do_nothing(index_elements=["platform_id"]).returning(Listing.id)
 
             result = await db.execute(stmt)
-            if result.rowcount > 0:
+            if result.first() is not None:
                 inserted += 1
             else:
                 skipped += 1

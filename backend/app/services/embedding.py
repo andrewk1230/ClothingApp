@@ -6,11 +6,12 @@ from app.schemas.search import BoundingBox
 
 async def generate_embedding(image: Image.Image, bbox: BoundingBox | None = None) -> list[float]:
     if bbox:
-        image = image.crop((
-            int(bbox.x),
-            int(bbox.y),
-            int(bbox.x + bbox.w),
-            int(bbox.y + bbox.h),
-        ))
+        width, height = image.size
+        left = max(0, int(bbox.x))
+        top = max(0, int(bbox.y))
+        right = min(width, int(bbox.x + bbox.w))
+        bottom = min(height, int(bbox.y + bbox.h))
+        if right > left and bottom > top:
+            image = image.crop((left, top, right, bottom))
 
     return clip_model.encode_image(image)

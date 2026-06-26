@@ -1,7 +1,7 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
 
 import { API_BASE_URL } from "../constants/config";
+import { supabase } from "./supabase";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,7 +12,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync("supabase_token");
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
