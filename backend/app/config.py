@@ -1,4 +1,9 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_ROOT = Path(__file__).resolve().parents[2]  # ClothingApp/
+_BACKEND = Path(__file__).resolve().parents[1]  # ClothingApp/backend/
 
 
 class Settings(BaseSettings):
@@ -29,7 +34,10 @@ class Settings(BaseSettings):
     max_image_size_mb: int = 10
     max_image_dimension: int = 1024
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = SettingsConfigDict(
+        env_file=(_ROOT / ".env", _BACKEND / ".env"),
+        extra="ignore",
+    )
 
 
 settings = Settings()
