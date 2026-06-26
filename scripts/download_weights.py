@@ -31,7 +31,7 @@ def main():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "httpx"])
         import httpx
 
-    print(f"Downloading DeepFashion2 YOLOv8s-seg weights from HuggingFace...")
+    print("Downloading DeepFashion2 YOLOv8s-seg weights from HuggingFace...")
     print(f"URL: {WEIGHTS_URL}")
 
     tmp_file = WEIGHTS_FILE.with_suffix(WEIGHTS_FILE.suffix + ".tmp")
@@ -47,7 +47,11 @@ def main():
                     downloaded += len(chunk)
                     if total:
                         pct = downloaded / total * 100
-                        print(f"\r  {downloaded / 1e6:.1f} / {total / 1e6:.1f} MB ({pct:.0f}%)", end="", flush=True)
+                        print(
+                            f"\r  {downloaded / 1e6:.1f} / {total / 1e6:.1f} MB ({pct:.0f}%)",
+                            end="",
+                            flush=True,
+                        )
 
         os.replace(tmp_file, WEIGHTS_FILE)
     except BaseException:
