@@ -16,7 +16,16 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
-    clip_model: str = "ViT-B-32"
+    # Native apps send no Origin header, so CORS only affects browser clients
+    # (Expo web / dev tools).
+    cors_origins: list[str] = [
+        "http://localhost:8081",
+        "http://localhost:19006",
+    ]
+
+    # -quickgelu variant matches the activation the OpenAI weights were trained
+    # with; plain ViT-B-32 + openai tag silently degrades embedding quality
+    clip_model: str = "ViT-B-32-quickgelu"
     clip_pretrained: str = "openai"
     yolo_weights_path: str = "app/ml/weights/deepfashion2_yolov8s-seg.pt"
 
