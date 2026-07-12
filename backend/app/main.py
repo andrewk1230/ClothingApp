@@ -1,7 +1,8 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
@@ -35,19 +36,36 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Phase 6 — restrict to app origins
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-from app.routers import auth, history, listings, saved, search
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "%s %s -> %d (%.1fms)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
+
+
+from app.routers import auth, history, listings, rate_limit, saved, search  # noqa: E402
 
 app.include_router(search.router)
 app.include_router(listings.router)
 app.include_router(saved.router)
 app.include_router(history.router)
 app.include_router(auth.router)
+app.include_router(rate_limit.router)
 
 
 @app.get("/health")
