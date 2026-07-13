@@ -1,3 +1,5 @@
+import asyncio
+
 from PIL import Image
 
 from app.ml import clip_model
@@ -14,4 +16,6 @@ async def generate_embedding(image: Image.Image, bbox: BoundingBox | None = None
         if right > left and bottom > top:
             image = image.crop((left, top, right, bottom))
 
-    return clip_model.encode_image(image)
+    # CLIP inference is synchronous CPU/GPU-bound work; run it off the event
+    # loop so concurrent requests (and scheduler jobs) are not blocked.
+    return await asyncio.to_thread(clip_model.encode_image, image)
