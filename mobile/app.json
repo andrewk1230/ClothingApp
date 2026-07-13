@@ -38,7 +38,8 @@
         {
           "photosPermission": "Allow GrailSeeker to access your photos to search for clothing items."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

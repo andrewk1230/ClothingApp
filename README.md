@@ -96,12 +96,20 @@ npm install
 npm start          # then press i (iOS), a (Android), or w (web) — or scan the QR code in Expo Go
 ```
 
-Point the app at your backend by setting `API_BASE_URL` in `mobile/constants/config.ts` (or via env) to your local server or Cloudflare Tunnel URL.
+Configure the app via a `mobile/.env` (or shell env) with Expo public variables:
+
+```bash
+EXPO_PUBLIC_API_BASE_URL=https://<your-tunnel-or-local>:8000   # defaults to http://localhost:8000
+EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+```
+
+Without the Supabase variables the app still runs in guest mode; the login screen shows "Sign-in is not configured yet". Google/Apple providers must be enabled in the Supabase dashboard with the app's `grailseeker://` redirect URL allowed.
 
 ## Features (v1)
 
 - **Upload:** camera capture or photo library picker; images processed in memory only, never persisted
-- **Garment segmentation:** auto-detected bounding boxes across 10 categories (tops, outerwear, bottoms, dresses, footwear, bags, headwear, jewelry, eyewear, other); manual rectangle crop for logged-in users
+- **Garment segmentation:** auto-detected bounding boxes for garments (tops, outerwear, bottoms, dresses — the DeepFashion2 class set); accessories (footwear, bags, headwear, jewelry, eyewear) are searchable via the always-available "Search entire image" fallback or the manual rectangle crop for logged-in users
 - **Visual search:** top 20 similar listings per tapped garment, ranked by CLIP embedding cosine similarity via pgvector
 - **Results:** confidence-labeled matches ("Similar match" between 0.4–0.7 similarity, hidden below 0.4), tap-through to the listing on eBay
 - **Guest vs. logged-in:** guests get full upload/search; logged-in users (Supabase Auth) additionally get price filters, search history, and a saved items/wishlist
@@ -111,4 +119,8 @@ See [PRD.md](../PRD.md) for the full product spec, screen list, data pipeline, a
 
 ## Status
 
-Phases 0–2 complete. See the tracked category gap: the segmentation model currently auto-detects a subset of the PRD's 10 garment categories — a product decision is pending before the Phase 4 UI work.
+Phases 0–6 complete: full vertical slice (upload → segment → results → listing), Supabase auth with Google/Apple OAuth, rate limiting, saved items, search history, manual crop, price filters, dark mode, offline handling, and a passing backend test suite.
+
+Remaining for launch (requires physical resources): eBay production credentials + initial 50k-listing seed on the Windows GPU host, Cloudflare Tunnel bring-up, Supabase OAuth provider configuration, EAS/TestFlight builds on a Mac with an Apple developer account, and the hand-labeled evaluation dataset (PRD §9).
+
+Known scope decision: the DeepFashion2 segmentation model detects garments only (4 categories). Accessories are covered by whole-image search and manual crop — see PRD §4.2 vs. §8.1.

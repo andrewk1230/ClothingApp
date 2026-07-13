@@ -1,47 +1,88 @@
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { useState } from "react";
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
 
-import { getColors } from "../../lib/theme";
+import { IMAGE_COMPRESSION_QUALITY, IMAGE_MAX_DIMENSION } from "../../constants/config";
+import { useTheme } from "../../hooks/useTheme";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = getColors(scheme);
+  const { colors } = useTheme();
+  const [processing, setProcessing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.8,
-    });
+  const compressAndNavigate = async (asset: ImagePicker.ImagePickerAsset) => {
+    setProcessing(true);
+    try {
+      const context = ImageManipulator.manipulate(asset.uri);
+      if (Math.max(asset.width, asset.height) > IMAGE_MAX_DIMENSION) {
+        if (asset.width >= asset.height) {
+          context.resize({ width: IMAGE_MAX_DIMENSION });
+        } else {
+          context.resize({ height: IMAGE_MAX_DIMENSION });
+        }
+      }
+      const rendered = await context.renderAsync();
+      const result = await rendered.saveAsync({
+        format: SaveFormat.JPEG,
+        compress: IMAGE_COMPRESSION_QUALITY,
+      });
 
-    if (!result.canceled && result.assets[0]) {
       router.push({
         pathname: "/segmentation",
-        params: { imageUri: result.assets[0].uri },
+        params: {
+          imageUri: result.uri,
+          imageWidth: result.width.toString(),
+          imageHeight: result.height.toString(),
+        },
       });
+    } catch {
+      setMessage("Couldn't process that photo. Please try another one.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const pickImage = async () => {
+    setMessage(null);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 1,
+      });
+      if (!result.canceled && result.assets[0]) {
+        await compressAndNavigate(result.assets[0]);
+      }
+    } catch {
+      setMessage("Couldn't open your photo library. Check GrailSeeker's photo access in Settings.");
     }
   };
 
   const takePhoto = async () => {
+    setMessage(null);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") return;
+    if (status !== "granted") {
+      setMessage("Camera access is required to take a photo. Enable it for GrailSeeker in Settings.");
+      return;
+    }
 
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      router.push({
-        pathname: "/segmentation",
-        params: { imageUri: result.assets[0].uri },
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 1,
       });
+      if (!result.canceled && result.assets[0]) {
+        await compressAndNavigate(result.assets[0]);
+      }
+    } catch {
+      setMessage("Couldn't open the camera. Please try again.");
     }
   };
 
@@ -54,11 +95,12 @@ export default function HomeScreen() {
 
       <View style={styles.buttonGroup}>
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.accent }]}
-          onPress={pickImage}
+          style={[styles.button, { backgroundColor: colors.accent }, processing && styles.disabled]}
+          onPress={takePhoto}
+          disabled={processing}
         >
           <Text style={[styles.buttonText, { color: colors.accentText }]}>
-            Choose from Library
+            Take Photo
           </Text>
         </TouchableOpacity>
 
@@ -70,14 +112,29 @@ export default function HomeScreen() {
               borderWidth: 1,
               borderColor: colors.border,
             },
+            processing && styles.disabled,
           ]}
-          onPress={takePhoto}
+          onPress={pickImage}
+          disabled={processing}
         >
           <Text style={[styles.buttonText, { color: colors.text }]}>
-            Take Photo
+            Choose from Library
           </Text>
         </TouchableOpacity>
       </View>
+
+      {processing && (
+        <View style={styles.statusRow}>
+          <ActivityIndicator size="small" color={colors.accent} />
+          <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+            Preparing photo...
+          </Text>
+        </View>
+      )}
+
+      {message && (
+        <Text style={[styles.message, { color: colors.error }]}>{message}</Text>
+      )}
     </View>
   );
 }
@@ -111,5 +168,22 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 24,
+  },
+  statusText: {
+    fontSize: 14,
+  },
+  message: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 24,
   },
 });

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from io import BytesIO
 
@@ -40,7 +41,10 @@ async def embed_and_store(listings: list[ScrapedListing]) -> tuple[int, int]:
                 continue
 
             try:
-                embedding = clip_model.encode_image(img)
+                # Run sync CLIP inference off the event loop: this job runs on
+                # the API's loop (AsyncIOScheduler) and would otherwise freeze
+                # all requests while a batch of images is encoded.
+                embedding = await asyncio.to_thread(clip_model.encode_image, img)
             except Exception as e:
                 logger.warning("CLIP encoding failed for %s: %s", listing.platform_id, e)
                 skipped += 1

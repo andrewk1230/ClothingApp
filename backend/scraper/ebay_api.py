@@ -48,7 +48,9 @@ FASHION_CATEGORY_ID = "11450"
 
 CATEGORY_QUERIES = {
     "top": ["vintage t-shirt", "hoodie", "sweater", "flannel shirt", "henley"],
-    "outerwear": ["vintage jacket", "leather jacket", "bomber jacket", "denim jacket", "windbreaker"],
+    "outerwear": [
+        "vintage jacket", "leather jacket", "bomber jacket", "denim jacket", "windbreaker",
+    ],
     "bottom": ["vintage jeans", "cargo pants", "corduroy pants", "shorts", "skirt"],
     "dress": ["vintage dress", "maxi dress", "mini dress"],
     "footwear": ["vintage sneakers", "boots", "loafers", "running shoes"],

@@ -1,20 +1,28 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
-  Dimensions,
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getColors } from "../lib/theme";
+import { ONBOARDING_COMPLETE_KEY } from "../constants/config";
+import { useTheme } from "../hooks/useTheme";
 
-const { width } = Dimensions.get("window");
+interface Slide {
+  title: string;
+  description: string;
+  icon: string;
+}
 
-const slides = [
+const slides: Slide[] = [
   {
     title: "Upload",
     description: "Take a photo or choose from your gallery",
@@ -35,31 +43,78 @@ const slides = [
 export default function OnboardingScreen() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = getColors(scheme);
+  const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList<Slide>>(null);
+
+  const complete = async () => {
+    try {
+      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+    } catch {
+      // Persisting is best-effort — never trap the user on onboarding.
+      // Worst case the tutorial shows again on the next launch.
+    }
+    router.replace("/(tabs)");
+  };
 
   const handleNext = async () => {
     if (currentSlide < slides.length - 1) {
-      setCurrentSlide(currentSlide + 1);
+      const next = currentSlide + 1;
+      setCurrentSlide(next);
+      listRef.current?.scrollToIndex({ index: next, animated: true });
     } else {
-      await AsyncStorage.setItem("onboarding_complete", "true");
-      router.replace("/(tabs)");
+      await complete();
     }
   };
 
-  const slide = slides[currentSlide];
+  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    if (index !== currentSlide && index >= 0 && index < slides.length) {
+      setCurrentSlide(index);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        <Text style={styles.icon}>{slide.icon}</Text>
-        <Text style={[styles.title, { color: colors.text }]}>{slide.title}</Text>
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
-          {slide.description}
-        </Text>
+      <View style={[styles.skipRow, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          onPress={complete}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={[styles.skipText, { color: colors.textSecondary }]}>
+            Skip
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
+      <FlatList
+        ref={listRef}
+        data={slides}
+        keyExtractor={(item) => item.title}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScrollEnd}
+        getItemLayout={(_, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
+        renderItem={({ item }) => (
+          <View style={[styles.slide, { width }]}>
+            <Text style={styles.icon}>{item.icon}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {item.title}
+            </Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>
+              {item.description}
+            </Text>
+          </View>
+        )}
+      />
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 24 }]}>
         <View style={styles.dots}>
           {slides.map((_, i) => (
             <View
@@ -92,7 +147,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  skipRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 24,
+  },
+  skipText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  slide: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -114,7 +178,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 24,
-    paddingBottom: 48,
   },
   dots: {
     flexDirection: "row",
