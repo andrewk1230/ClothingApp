@@ -15,9 +15,12 @@ class SavedItemResponse(BaseModel):
     image_url: str
     price: float | None
     currency: str
+    size: str | None
+    condition: str | None
+    title: str | None
     platform: str
     listing_url: str
-    title: str | None
+    created_at: datetime
 
 
 class SearchHistoryEntry(BaseModel):
@@ -25,4 +28,5 @@ class SearchHistoryEntry(BaseModel):
     category: str | None
     bbox: dict | None
     result_count: int
+    thumbnail_urls: list[str] = []
     created_at: datetime
