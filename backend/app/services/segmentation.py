@@ -1,3 +1,5 @@
+import asyncio
+
 from PIL import Image
 
 from app.ml import yolo_model
@@ -8,7 +10,11 @@ CONFIDENCE_THRESHOLD = 0.3
 
 async def detect_garments(image: Image.Image) -> tuple[list[DetectedItem], int, int]:
     width, height = image.size
-    raw_detections = yolo_model.detect(image, confidence_threshold=CONFIDENCE_THRESHOLD)
+    # YOLO inference is synchronous CPU/GPU-bound work; run it off the event
+    # loop so concurrent requests are not blocked.
+    raw_detections = await asyncio.to_thread(
+        yolo_model.detect, image, confidence_threshold=CONFIDENCE_THRESHOLD
+    )
 
     items = []
     for i, det in enumerate(raw_detections):
