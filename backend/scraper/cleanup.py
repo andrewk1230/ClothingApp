@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.listing import Listing
-from scraper.ebay_api import check_item_active
+from app.services.listing_checker import check_listing_active
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,11 @@ async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1, max_b
 
     deactivated = 0
     for listing in listings:
-        is_active = await check_item_active(listing.platform_id)
+        # Route through the platform-aware checker: calling the eBay getItem
+        # API for a non-eBay platform_id would 404 and wrongly deactivate a
+        # live listing. The checker is also failure-tolerant, so one network
+        # error does not abort the whole batch uncommitted.
+        is_active = await check_listing_active(listing.platform, listing.platform_id)
         listing.last_checked_at = datetime.now(timezone.utc)
         if not is_active:
             listing.is_active = False
