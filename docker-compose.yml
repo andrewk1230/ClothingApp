@@ -4,10 +4,14 @@ services:
     container_name: grailseeker-db
     environment:
       POSTGRES_USER: grailseeker
-      POSTGRES_PASSWORD: grailseeker
+      # Default is for local dev only. On the serving host set POSTGRES_PASSWORD
+      # to a strong value (and match it in DATABASE_URL) BEFORE first `up` —
+      # postgres only applies it when initializing an empty data volume.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grailseeker}
       POSTGRES_DB: grailseeker
     ports:
-      - "5432:5432"
+      # Loopback only: nothing but the local backend should reach Postgres.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

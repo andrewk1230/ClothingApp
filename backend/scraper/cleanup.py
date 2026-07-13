@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.listing import Listing
+from app.models.rate_limit import RateLimit
 from app.services.listing_checker import check_listing_active
 
 logger = logging.getLogger(__name__)
@@ -49,7 +51,20 @@ async def cleanup_stale_listings(db: AsyncSession, batch_pct: float = 0.1, max_b
     logger.info("Cleanup: checked %d, deactivated %d", len(listings), deactivated)
 
 
+async def purge_old_rate_limits(db: AsyncSession):
+    """Delete rate-limit rows older than the retention window.
+
+    Quotas are per-day, so old rows are dead weight; without a purge the
+    table grows by one row per active caller per day forever.
+    """
+    cutoff = func.current_date() - settings.rate_limit_retention_days
+    result = await db.execute(delete(RateLimit).where(RateLimit.window_date < cutoff))
+    await db.commit()
+    logger.info("Cleanup: purged %d old rate-limit rows", result.rowcount)
+
+
 async def run_cleanup():
     from app.database import async_session
     async with async_session() as db:
         await cleanup_stale_listings(db)
+        await purge_old_rate_limits(db)

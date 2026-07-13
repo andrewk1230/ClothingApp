@@ -1,7 +1,8 @@
-# GrailSeeker — Session Handoff (2026-07-13)
+# GrailSeeker — Session Handoff (2026-07-14)
 
-State of the project after the end-to-end implementation session. Read alongside
-[PRD.md](../PRD.md) (product spec) and [README.md](README.md) (setup).
+State of the project after the security-hardening session (which followed the
+end-to-end implementation session). Read alongside [PRD.md](../PRD.md)
+(product spec) and [README.md](README.md) (setup).
 
 ## Where things stand
 
@@ -13,8 +14,13 @@ results grid with confidence labels → listing detail with eBay stale-check →
 user per day), saved items, search history, price filters, dark-mode override,
 onboarding, and offline handling are all implemented per the PRD.
 
+**The P0/P1 security hardening is now implemented too** (see the security
+section below for what changed and what remains dashboard-side).
+
 **Verification evidence (all re-runnable):**
-- Backend: `cd backend && .venv/bin/python -m pytest -q` → **61 passed**; `ruff check app tests scraper` clean.
+- Backend: `cd backend && .venv/bin/python -m pytest -q` → **76 passed**
+  (61 from the implementation session + 15 security tests in
+  `tests/test_security.py`); `ruff check app tests scraper` clean.
 - Mobile: `cd mobile && npx tsc --noEmit` clean; `npx expo export --platform ios` bundles.
 - Live boot: uvicorn with real CLIP + YOLO weights starts warning-free on the Mac (CPU);
   real image POSTed through `/segment` and `/find` returns correct shapes and
@@ -68,21 +74,46 @@ onboarding, and offline handling are all implemented per the PRD.
 4. EAS builds (`mobile/eas.json` is ready): TestFlight (needs Apple dev account)
    + internal APK.
 5. PRD §9 evaluation: 200–500 hand-labeled images; demo video.
-6. No git repository exists yet — init before publishing (`.gitignore` already
-   covers `.env` and weights).
+6. ~~Init git repo~~ **Done** — repo exists with `origin`
+   (github.com/andrewk1230/ClothingApp); local commits are NOT pushed
+   (push when ready to publish). `.gitignore` covers `.env` and weights.
+7. **Set `ENVIRONMENT=production` and a strong `POSTGRES_PASSWORD` in the
+   serving PC's `.env` before first `docker compose up`** (postgres only
+   applies the password when initializing an empty data volume; mirror it in
+   `DATABASE_URL`).
 
-## Security recommendations before publishing (assessed, NOT yet implemented)
+## Security hardening — IMPLEMENTED 2026-07-14 (code side)
 
-P0: disable `/docs`+`/openapi.json` in prod; bind Postgres to loopback + strong
-password (currently `5432:5432` with `grailseeker/grailseeker`); trust only
-`CF-Connecting-IP` for guest rate-limit keys (X-Forwarded-For is spoofable);
-add a generous cap on `/find` (GPU DoS) and a `last_checked_at` throttle on
-`/check` (eBay budget drain); bind uvicorn to `127.0.0.1`.
-P1: explicit Pillow `MAX_IMAGE_PIXELS` cap; Cloudflare edge rate-limit/bot
-rules; generic 500 handler; purge old `rate_limits` rows in nightly cleanup.
-P2 (if open-sourcing): rotate Supabase JWT secret + eBay secret if ever in
-doubt; SECURITY.md; `pip-audit`/`npm audit`/Dependabot; document JWKS (not the
-HS256 legacy secret) as the example auth config.
+All P0/P1 code items are done, tested (`tests/test_security.py`), and
+config-driven (`app/config.py`, documented in `.env.example`):
+
+- **Docs off in prod:** `ENVIRONMENT=production` disables `/docs`, `/redoc`,
+  `/openapi.json` (`create_app()` factory in `app/main.py`).
+- **Proxy-header trust:** in production only `CF-Connecting-IP` keys guest
+  rate limits (Cloudflare overwrites it; `X-Forwarded-For` is spoofable and
+  honored only in development).
+- **Postgres:** compose now binds `127.0.0.1:5432` and takes
+  `POSTGRES_PASSWORD` from env (dev default unchanged). The Mac's running
+  `grailseeker-db` container predates this — it still has the old binding
+  until recreated; the Windows bring-up gets it from the start.
+- **`/find` abuse cap:** `FIND_DAILY_LIMIT=200`/day per caller (separate
+  `find:`-prefixed bucket in `rate_limits`; does NOT touch the user-visible
+  quota — `/find` stays unmetered per PRD §4.5). 429 with generic detail.
+- **`/check` throttle:** stored `is_active` served while `last_checked_at` is
+  within `LISTING_CHECK_TTL_MINUTES=15`; live checks stamp the field.
+- **uvicorn loopback:** `api_host` default + `.env` now `127.0.0.1` (tunnel
+  connects locally; `fastapi dev` already defaulted to loopback).
+- **Decompression-bomb guard:** pixel count checked after header parse,
+  before full decode (`MAX_IMAGE_PIXELS=40000000` → 413, no quota burn).
+- **Generic 500 handler:** JSON `{"detail": "Internal server error"}`,
+  traceback only in server logs.
+- **rate_limits retention:** nightly cleanup purges rows older than
+  `RATE_LIMIT_RETENTION_DAYS=7`.
+
+**Still open (not code):** Cloudflare edge rate-limit/bot rules (dashboard,
+during tunnel bring-up). P2 if open-sourcing: rotate Supabase JWT + eBay
+secrets if ever in doubt; SECURITY.md; `pip-audit`/`npm audit`/Dependabot;
+document JWKS (not the HS256 legacy secret) as the example auth config.
 
 ## Gotchas for the next session
 

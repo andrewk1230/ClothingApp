@@ -7,13 +7,20 @@ _BACKEND = Path(__file__).resolve().parents[1]  # ClothingApp/backend/
 
 
 class Settings(BaseSettings):
+    # "production" disables /docs + /openapi.json and stops trusting
+    # X-Forwarded-For for guest rate-limit keys (only CF-Connecting-IP,
+    # which Cloudflare overwrites, is spoof-proof behind the tunnel).
+    environment: str = "development"
+
     database_url: str = "postgresql+asyncpg://grailseeker:grailseeker@localhost:5432/grailseeker"
 
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_jwt_secret: str = ""
 
-    api_host: str = "0.0.0.0"
+    # Loopback only: the Cloudflare tunnel connects to localhost, so the API
+    # never needs to listen on the LAN.
+    api_host: str = "127.0.0.1"
     api_port: int = 8000
 
     # Native apps send no Origin header, so CORS only affects browser clients
@@ -39,9 +46,20 @@ class Settings(BaseSettings):
 
     guest_daily_limit: int = 5
     user_daily_limit: int = 50
+    # /find is unmetered for users (PRD §4.5: 1 upload = 1 search, metered at
+    # /segment), but a generous per-caller daily cap stops GPU-burn abuse.
+    find_daily_limit: int = 200
+
+    # /listings/{id}/check hits the eBay getItem API; within this TTL the
+    # stored is_active is returned instead (eBay call budget, PRD §7.3).
+    listing_check_ttl_minutes: int = 15
 
     max_image_size_mb: int = 10
     max_image_dimension: int = 1024
+    # Reject before full decode: a small file can decompress to a huge bitmap.
+    max_image_pixels: int = 40_000_000
+
+    rate_limit_retention_days: int = 7
 
     model_config = SettingsConfigDict(
         env_file=(_ROOT / ".env", _BACKEND / ".env"),

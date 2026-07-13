@@ -119,7 +119,7 @@ See [PRD.md](../PRD.md) for the full product spec, screen list, data pipeline, a
 
 ## Status
 
-Phases 0–6 complete: full vertical slice (upload → segment → results → listing), Supabase auth with Google/Apple OAuth, rate limiting, saved items, search history, manual crop, price filters, dark mode, offline handling, and a passing backend test suite.
+Phases 0–6 complete: full vertical slice (upload → segment → results → listing), Supabase auth with Google/Apple OAuth, rate limiting, saved items, search history, manual crop, price filters, dark mode, offline handling, and a passing backend test suite. Security hardening for self-hosting is in place: production mode (`ENVIRONMENT=production`) disables API docs and trusts only Cloudflare's client-IP header, Postgres binds to loopback with an env-driven password, `/find` has an abuse cap, listing stale-checks are throttled to protect the eBay call budget, oversized images are rejected before decode, and unhandled errors return a generic 500.
 
 Remaining for launch (requires physical resources): eBay production credentials + initial 50k-listing seed on the Windows GPU host, Cloudflare Tunnel bring-up, Supabase OAuth provider configuration, EAS/TestFlight builds on a Mac with an Apple developer account, and the hand-labeled evaluation dataset (PRD §9).
 

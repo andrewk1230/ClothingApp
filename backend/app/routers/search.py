@@ -18,7 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.middleware.auth import get_current_user
-from app.middleware.rate_limit import RateLimitStatus, check_rate_limit
+from app.middleware.rate_limit import (
+    RateLimitStatus,
+    check_find_rate_limit,
+    check_rate_limit,
+)
 from app.models.search_history import SearchHistory
 from app.schemas.search import BoundingBox, SearchResponse, SegmentResponse
 from app.services.embedding import generate_embedding
@@ -40,9 +44,15 @@ async def _read_upload_image(image: UploadFile) -> Image.Image:
     try:
         img = Image.open(BytesIO(contents))
         fmt = img.format
+        # Header is parsed at this point but pixels are not decoded yet:
+        # reject decompression bombs (small file, huge bitmap) before load().
+        if img.width * img.height > settings.max_image_pixels:
+            raise HTTPException(413, "Image dimensions too large")
         # Image.open only parses the header; force a full decode here so that
         # truncated/corrupt files fail with a 400 instead of a 500 later.
         img.load()
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(400, "Invalid image file")
 
@@ -86,6 +96,7 @@ async def segment_image(
 
 @router.post("/find", response_model=SearchResponse)
 async def find_similar(
+    request: Request,
     image: UploadFile = File(...),
     bbox_x: float = Query(0),
     bbox_y: float = Query(0),
@@ -97,6 +108,9 @@ async def find_similar(
     user_id: UUID | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Abuse cap only (unmetered per PRD §4.5) — checked before any image
+    # decoding or GPU work so over-cap callers cost nothing.
+    await check_find_rate_limit(request, user_id, db)
     img = await _read_upload_image(image)
 
     bbox = None
