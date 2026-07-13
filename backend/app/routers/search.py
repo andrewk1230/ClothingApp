@@ -1,15 +1,31 @@
+import logging
 from io import BytesIO
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.middleware.auth import get_current_user
+from app.middleware.rate_limit import RateLimitStatus, check_rate_limit
+from app.models.search_history import SearchHistory
 from app.schemas.search import BoundingBox, SearchResponse, SegmentResponse
 from app.services.embedding import generate_embedding
 from app.services.segmentation import detect_garments
 from app.services.vector_search import find_similar_listings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/search", tags=["search"])
 
@@ -23,13 +39,20 @@ async def _read_upload_image(image: UploadFile) -> Image.Image:
         raise HTTPException(413, f"Image exceeds {settings.max_image_size_mb}MB limit")
     try:
         img = Image.open(BytesIO(contents))
+        fmt = img.format
+        # Image.open only parses the header; force a full decode here so that
+        # truncated/corrupt files fail with a 400 instead of a 500 later.
+        img.load()
     except Exception:
         raise HTTPException(400, "Invalid image file")
 
-    if img.format not in ALLOWED_FORMATS:
+    if fmt not in ALLOWED_FORMATS:
         raise HTTPException(415, "Unsupported image format. Use JPEG, PNG, or WebP.")
 
-    img = img.convert("RGB")
+    try:
+        img = img.convert("RGB")
+    except Exception:
+        raise HTTPException(400, "Invalid image file")
 
     max_dim = settings.max_image_dimension
     if max(img.size) > max_dim:
@@ -42,11 +65,22 @@ async def _read_upload_image(image: UploadFile) -> Image.Image:
 
 @router.post("/segment", response_model=SegmentResponse)
 async def segment_image(
+    request: Request,
+    response: Response,
     image: UploadFile = File(...),
+    user_id: UUID | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Validate the upload BEFORE consuming a rate-limit unit: a rejected
+    # image (too large / corrupt / wrong format) is not a search (PRD §4.5,
+    # "1 upload = 1 search").
     img = await _read_upload_image(image)
+    rate: RateLimitStatus = await check_rate_limit(request, user_id, db)
     items, width, height = await detect_garments(img)
+
+    response.headers["X-RateLimit-Limit"] = str(rate.limit)
+    response.headers["X-RateLimit-Remaining"] = str(rate.remaining)
+
     return SegmentResponse(items=items, image_width=width, image_height=height)
 
 
@@ -59,6 +93,8 @@ async def find_similar(
     bbox_h: float = Query(0),
     min_price: float | None = Query(None),
     max_price: float | None = Query(None),
+    category: str | None = Query(None, max_length=50),
+    user_id: UUID | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     img = await _read_upload_image(image)
@@ -72,4 +108,19 @@ async def find_similar(
         db, embedding, limit=20, min_price=min_price, max_price=max_price,
     )
 
-    return SearchResponse(results=results)
+    if user_id is not None:
+        try:
+            db.add(SearchHistory(
+                user_id=user_id,
+                category=category,
+                bbox=bbox.model_dump() if bbox else None,
+                result_ids=[r.id for r in results],
+            ))
+            await db.commit()
+        except Exception:
+            logger.warning(
+                "Failed to log search history for user %s", user_id, exc_info=True,
+            )
+            await db.rollback()
+
+    return SearchResponse(results=results, query_category=category)
