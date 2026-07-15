@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      backend-deps:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+    groups:
+      # Expo SDK packages move in lockstep; one PR per week for the rest.
+      expo:
+        patterns: ["expo*", "@expo/*"]
+      mobile-deps:
+        patterns: ["*"]
+        exclude-patterns: ["expo*", "@expo/*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

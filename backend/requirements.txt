@@ -5,7 +5,9 @@ alembic>=1.14.0
 pgvector>=0.3.6
 pydantic-settings>=2.7.0
 python-multipart>=0.0.18
-Pillow>=11.0.0
+# 12.3.0 fixes PYSEC-2026-2253..2257 (image decoding CVEs — we decode
+# untrusted uploads, so keep this floor current)
+Pillow>=12.3.0
 open-clip-torch>=2.29.0
 ultralytics>=8.3.0
 # playwright removed — eBay Browse API replaces scraping
