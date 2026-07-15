@@ -1,0 +1,15 @@
+# GrailSeeker eval labels — one row per garment of interest (PRD §9.1 taxonomy).
+# filename:   image file inside --images (e.g. photo_001.jpg)
+# category:   Level 1 — one of: top, outerwear, bottom, dress, footwear, bag,
+#             headwear, jewelry, eyewear, other
+#             (top/outerwear/bottom/dress are auto-detectable; the rest are
+#             evaluated as whole-image searches)
+# subtype:    Level 2 sub-type, free text (e.g. "trucker jacket", "bomber")
+# fit:        slim | regular | oversized | (blank if n/a)
+# primary_color: free text (e.g. "washed black")
+# material:   leather | denim | cotton | knit | ... (free text)
+# era_style:  vintage | streetwear | minimalist | ... (free text)
+# notes:      anything reviewers should know (occlusion, multiple garments...)
+filename,category,subtype,fit,primary_color,material,era_style,notes
+photo_001.jpg,outerwear,trucker jacket,regular,indigo,denim,vintage,worn on model
+photo_002.jpg,top,band t-shirt,oversized,black,cotton,streetwear,flat lay
