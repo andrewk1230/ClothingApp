@@ -131,49 +131,60 @@ async def search_listings(
         response.raise_for_status()
 
     data = response.json()
-    items = data.get("itemSummaries", [])
-    listings = []
+    return [_parse_item_summary(item) for item in data.get("itemSummaries", [])]
 
-    for item in items:
-        image_url = ""
-        if item.get("image"):
-            image_url = item["image"].get("imageUrl", "")
-        elif item.get("thumbnailImages"):
-            image_url = item["thumbnailImages"][0].get("imageUrl", "")
 
-        price_val = None
-        currency = "USD"
-        if item.get("price"):
-            try:
-                price_val = float(item["price"]["value"])
-            except (ValueError, KeyError):
-                pass
-            currency = item["price"].get("currency", "USD")
+# The taxonomy root wraps every fashion listing and contains the word
+# "shoes", which would wrongly match unrelated items to footwear.
+_ROOT_CATEGORY = "clothing, shoes & accessories"
 
-        size = None
-        for aspect in item.get("localizedAspects", []):
-            if aspect.get("name", "").lower() in ("size", "shoe size", "us shoe size"):
-                size = aspect.get("value")
-                break
 
-        condition = item.get("condition", "")
-        category_path = item.get("categoryPath", "")
-        garment_category = _map_ebay_category(category_path)
+def _parse_item_summary(item: dict) -> ScrapedListing:
+    """Build a ScrapedListing from a Browse API itemSummary."""
+    image_url = ""
+    if item.get("image"):
+        image_url = item["image"].get("imageUrl", "")
+    elif item.get("thumbnailImages"):
+        image_url = item["thumbnailImages"][0].get("imageUrl", "")
 
-        listings.append(ScrapedListing(
-            platform=Platform.EBAY,
-            platform_id=item.get("itemId", ""),
-            listing_url=item.get("itemWebUrl", ""),
-            image_url=image_url,
-            title=item.get("title", ""),
-            price=price_val,
-            currency=currency,
-            size=size,
-            condition=condition,
-            category=garment_category,
-        ))
+    price_val = None
+    currency = "USD"
+    if item.get("price"):
+        try:
+            price_val = float(item["price"]["value"])
+        except (ValueError, KeyError):
+            pass
+        currency = item["price"].get("currency", "USD")
 
-    return listings
+    # localizedAspects is a getItem field; itemSummaries usually lack it, so
+    # size is best-effort (kept for responses that do include it).
+    size = None
+    for aspect in item.get("localizedAspects", []):
+        if aspect.get("name", "").lower() in ("size", "shoe size", "us shoe size"):
+            size = aspect.get("value")
+            break
+
+    # item_summary/search has no categoryPath (that's a getItem field); it
+    # returns `categories` as [{categoryId, categoryName}, ...] instead.
+    category_names = "|".join(
+        name
+        for c in item.get("categories", [])
+        if (name := c.get("categoryName", "")).lower() != _ROOT_CATEGORY
+    )
+    garment_category = _map_ebay_category(category_names)
+
+    return ScrapedListing(
+        platform=Platform.EBAY,
+        platform_id=item.get("itemId", ""),
+        listing_url=item.get("itemWebUrl", ""),
+        image_url=image_url,
+        title=item.get("title", ""),
+        price=price_val,
+        currency=currency,
+        size=size,
+        condition=item.get("condition", ""),
+        category=garment_category,
+    )
 
 
 async def check_item_active(item_id: str) -> bool:
