@@ -143,6 +143,36 @@ follows §4.2/§12 (logged-in only).
 
 ## Next session — prioritized work plan (no physical resources needed)
 
+**0. FIRST: launch a parallel App Store readiness agent.** Before starting the
+feature work below, spawn a background agent (general-purpose) to audit
+everything Apple requires to publish, then fold its findings back into this
+plan. The agent must:
+
+- **Audit submission readiness** against current App Store Review Guidelines
+  (research them — do not rely on training data): `mobile/app.json` +
+  `mobile/eas.json` completeness (bundle IDs, icons, splash, version/build
+  numbers), iOS permission usage strings (camera, photo library), privacy
+  manifest / privacy nutrition labels, required support + privacy-policy URLs,
+  age rating, export compliance (uses HTTPS only).
+- **Check account-based app rules specifically:** Apple requires in-app
+  account deletion for apps with account creation (guideline 5.1.1(v)) — we
+  have Supabase accounts and NO delete-account flow; Sign in with Apple is
+  already planned (required when offering Google sign-in, 4.8). Also: guest
+  mode must not gate core functionality behind login (it doesn't).
+- **Flag content/legal items:** app displays eBay listing images/prices
+  (aggregator disclosure, no misrepresentation of affiliation), LICENSE says
+  MIT, need an in-app privacy policy link and terms.
+- **Define every missing component** it finds as a concrete work item (file,
+  screen, endpoint, or store-listing asset), ranked blocking vs. nice-to-have.
+
+While the agent runs, do the feature work below; when it reports, integrate
+the blocking items (e.g. account deletion needs a backend endpoint that
+deletes Supabase user + saved/history rows, plus a Profile screen action),
+then **debug everything end-to-end**: full `pytest` + `ruff` + `tsc` +
+`expo export`, live-boot the API and exercise the real flow, and fix whatever
+surfaces. Nothing ships to the store this session — the goal is that when
+Apple credentials arrive, submission is a mechanical step.
+
 1. **History tap-through** (closes PRD gap #1): backend endpoint to fetch
    listings for a history entry's stored `result_ids` (preserve stored order;
    handle since-deactivated listings), make Profile history rows navigate to a
