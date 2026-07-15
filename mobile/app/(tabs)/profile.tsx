@@ -176,6 +176,12 @@ export default function ProfileScreen() {
             <HistoryRow
               key={entry.id}
               entry={entry}
+              onPress={() =>
+                router.push({
+                  pathname: "/results",
+                  params: { historyId: entry.id },
+                })
+              }
               onDelete={() => handleDeleteEntry(entry.id)}
             />
           ))

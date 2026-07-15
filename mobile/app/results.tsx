@@ -16,6 +16,12 @@ import { useAuth } from "../hooks/useAuth";
 import { useSaved } from "../hooks/useSaved";
 import { FindSimilarOptions, ListingResult, useSearch } from "../hooks/useSearch";
 import { useTheme } from "../hooks/useTheme";
+import api from "../lib/api";
+
+/** Row shape returned by GET /api/v1/history/{id}/results. */
+type HistoryResultRow = Omit<ListingResult, "similarity" | "confidence_label"> & {
+  active: boolean;
+};
 
 function SkeletonGrid({ color }: { color: string }) {
   const pulse = useRef(new Animated.Value(0.5)).current;
@@ -45,12 +51,13 @@ function SkeletonGrid({ color }: { color: string }) {
 
 export default function ResultsScreen() {
   const params = useLocalSearchParams<{
-    imageUri: string;
+    imageUri?: string;
     bboxX?: string;
     bboxY?: string;
     bboxW?: string;
     bboxH?: string;
     category?: string;
+    historyId?: string;
   }>();
   const router = useRouter();
   const { colors } = useTheme();
@@ -59,6 +66,38 @@ export default function ResultsScreen() {
   const { findSimilar, results, searching, error } = useSearch();
   const [filters, setFilters] = useState<PriceFilters>({});
   const [started, setStarted] = useState(false);
+
+  // History replay mode: instead of running a fresh search, show the stored
+  // results of a past search. The original photo isn't kept, so there is no
+  // re-search or price filtering here.
+  const isHistory = params.historyId != null;
+  const [historyItems, setHistoryItems] = useState<ListingResult[] | null>(null);
+  const [historyInactive, setHistoryInactive] = useState<Set<string>>(new Set());
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const fetchHistoryResults = useCallback(async () => {
+    if (!params.historyId) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const response = await api.get(`/api/v1/history/${params.historyId}/results`);
+      const rows: HistoryResultRow[] = response.data ?? [];
+      setHistoryInactive(new Set(rows.filter((r) => !r.active).map((r) => r.id)));
+      setHistoryItems(
+        rows.map(({ active: _active, ...rest }) => ({
+          ...rest,
+          // Not stored per history entry; "match" renders without a badge.
+          similarity: 0,
+          confidence_label: "match",
+        }))
+      );
+    } catch {
+      setHistoryError("Couldn't load this search's results.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [params.historyId]);
 
   const runSearch = useCallback(
     (activeFilters?: PriceFilters) => {
@@ -88,7 +127,11 @@ export default function ResultsScreen() {
   );
 
   useEffect(() => {
-    runSearch();
+    if (isHistory) {
+      fetchHistoryResults();
+    } else {
+      runSearch();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -128,14 +171,36 @@ export default function ResultsScreen() {
 
   const hasActiveFilters = filters.minPrice != null || filters.maxPrice != null;
 
+  const displayResults = isHistory ? historyItems ?? [] : results;
+  const loading = isHistory
+    ? historyLoading || (historyItems === null && !historyError)
+    : searching || !started;
+
   let body: ReactNode;
-  if (searching || !started) {
+  if (loading) {
     body = (
       <View style={styles.container}>
         <SkeletonGrid color={colors.skeleton} />
       </View>
     );
-  } else if (error) {
+  } else if (isHistory && historyError) {
+    body = (
+      <View style={styles.emptyContainer}>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>
+          Something went wrong
+        </Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+          {historyError}
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: colors.accent }]}
+          onPress={fetchHistoryResults}
+        >
+          <Text style={[styles.retryButtonText, { color: colors.accentText }]}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  } else if (!isHistory && error) {
     body = (
       <View style={styles.emptyContainer}>
         <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -154,23 +219,25 @@ export default function ResultsScreen() {
         )}
       </View>
     );
-  } else if (results.length === 0) {
+  } else if (displayResults.length === 0) {
     body = (
       <View style={styles.emptyContainer}>
         <Text style={[styles.emptyTitle, { color: colors.text }]}>
-          No clothing found
+          {isHistory ? "Nothing to show" : "No clothing found"}
         </Text>
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-          {hasActiveFilters
-            ? "Try adjusting your price filters or uploading a different photo"
-            : "Try uploading a different photo"}
+          {isHistory
+            ? "The items from this search are no longer available"
+            : hasActiveFilters
+              ? "Try adjusting your price filters or uploading a different photo"
+              : "Try uploading a different photo"}
         </Text>
       </View>
     );
   } else {
     body = (
       <FlashList
-        data={results}
+        data={displayResults}
         numColumns={2}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -180,6 +247,7 @@ export default function ResultsScreen() {
               onPress={() => openListing(item)}
               onSave={() => handleSaveTap(item)}
               isSaved={isSaved(item.id)}
+              inactive={isHistory && historyInactive.has(item.id)}
             />
           </View>
         )}
@@ -190,12 +258,14 @@ export default function ResultsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <PriceFilterBar
-        isLoggedIn={isLoggedIn}
-        filters={filters}
-        onApply={handleApplyFilters}
-        onSignIn={() => router.push("/login")}
-      />
+      {!isHistory && (
+        <PriceFilterBar
+          isLoggedIn={isLoggedIn}
+          filters={filters}
+          onApply={handleApplyFilters}
+          onSignIn={() => router.push("/login")}
+        />
+      )}
       {body}
     </View>
   );

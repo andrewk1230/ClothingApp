@@ -69,6 +69,93 @@ async def test_history_thumbnails_capped_at_three(client, db):
     assert len(entries[0]["thumbnail_urls"]) == 3
 
 
+async def test_history_results_requires_auth(client):
+    response = await client.get(f"{HISTORY_URL}/{uuid.uuid4()}/results")
+    assert response.status_code == 401
+
+
+async def test_history_results_preserve_stored_order(client, db):
+    listings = [make_listing() for _ in range(4)]
+    db.add_all(listings)
+    await db.flush()
+
+    # Store in an order different from insertion to prove order comes from
+    # result_ids, not the DB.
+    ordered = [listings[2], listings[0], listings[3], listings[1]]
+    entry = SearchHistory(
+        user_id=TEST_USER_ID,
+        category="top",
+        result_ids=[listing.id for listing in ordered],
+    )
+    db.add(entry)
+    await db.commit()
+
+    response = await client.get(
+        f"{HISTORY_URL}/{entry.id}/results", headers=auth_headers()
+    )
+    assert response.status_code == 200
+    results = response.json()
+    assert [r["id"] for r in results] == [str(listing.id) for listing in ordered]
+    first = results[0]
+    assert first["image_url"] == ordered[0].image_url
+    assert first["listing_url"] == ordered[0].listing_url
+    assert first["price"] == 25.0
+    assert first["active"] is True
+
+
+async def test_history_results_flag_inactive_and_skip_deleted(client, db):
+    active = make_listing()
+    ended = make_listing(is_active=False)
+    db.add_all([active, ended])
+    await db.flush()
+
+    deleted_id = uuid.uuid4()  # never inserted: simulates a purged listing
+    entry = SearchHistory(
+        user_id=TEST_USER_ID,
+        category="top",
+        result_ids=[ended.id, deleted_id, active.id],
+    )
+    db.add(entry)
+    await db.commit()
+
+    results = (
+        await client.get(f"{HISTORY_URL}/{entry.id}/results", headers=auth_headers())
+    ).json()
+    assert [r["id"] for r in results] == [str(ended.id), str(active.id)]
+    assert results[0]["active"] is False
+    assert results[1]["active"] is True
+
+
+async def test_history_results_empty_entry(client, db):
+    entry = SearchHistory(user_id=TEST_USER_ID, category="top", result_ids=[])
+    db.add(entry)
+    await db.commit()
+
+    response = await client.get(
+        f"{HISTORY_URL}/{entry.id}/results", headers=auth_headers()
+    )
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+async def test_history_results_other_users_entry_404(client, db):
+    entry = SearchHistory(user_id=OTHER_USER_ID, category="top", result_ids=[])
+    db.add(entry)
+    await db.commit()
+
+    response = await client.get(
+        f"{HISTORY_URL}/{entry.id}/results", headers=auth_headers()
+    )
+    assert response.status_code == 404
+
+
+async def test_history_results_missing_entry_404(client):
+    response = await client.get(
+        f"{HISTORY_URL}/{uuid.uuid4()}/results", headers=auth_headers()
+    )
+    assert response.status_code == 404
+
+
 async def test_delete_own_history_entry(client, db):
     entry = SearchHistory(user_id=TEST_USER_ID, category="top", result_ids=[])
     db.add(entry)

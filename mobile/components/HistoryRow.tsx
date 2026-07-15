@@ -35,15 +35,21 @@ function categoryLabel(category: string | null): string {
 
 interface HistoryRowProps {
   entry: HistoryEntry;
+  onPress: () => void;
   onDelete: () => void;
 }
 
-export default function HistoryRow({ entry, onDelete }: HistoryRowProps) {
+export default function HistoryRow({ entry, onPress, onDelete }: HistoryRowProps) {
   const { colors } = useTheme();
   const thumbnails = entry.thumbnail_urls.slice(0, 3);
 
   return (
-    <View style={[styles.row, { borderBottomColor: colors.border }]}>
+    <TouchableOpacity
+      style={[styles.row, { borderBottomColor: colors.border }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel="View this search's results"
+    >
       <View style={styles.thumbnails}>
         {thumbnails.length > 0 ? (
           thumbnails.map((url, i) => (
@@ -74,7 +80,7 @@ export default function HistoryRow({ entry, onDelete }: HistoryRowProps) {
       >
         <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 

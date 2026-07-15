@@ -23,6 +23,19 @@ class SavedItemResponse(BaseModel):
     created_at: datetime
 
 
+class HistoryResultListing(BaseModel):
+    id: UUID
+    image_url: str
+    price: float | None
+    currency: str
+    size: str | None
+    condition: str | None
+    title: str | None
+    platform: str
+    listing_url: str
+    active: bool
+
+
 class SearchHistoryEntry(BaseModel):
     id: UUID
     category: str | None

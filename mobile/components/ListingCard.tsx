@@ -16,6 +16,8 @@ interface ListingCardProps {
   /** Tapped on the heart overlay; the heart renders only when provided. */
   onSave?: () => void;
   isSaved?: boolean;
+  /** The listing has ended since this search (history replay). */
+  inactive?: boolean;
 }
 
 export function formatPrice(price: number | null, currency: string): string {
@@ -35,7 +37,13 @@ function platformLabel(platform: string): string {
   return platform.charAt(0).toUpperCase() + platform.slice(1);
 }
 
-export default function ListingCard({ listing, onPress, onSave, isSaved }: ListingCardProps) {
+export default function ListingCard({
+  listing,
+  onPress,
+  onSave,
+  isSaved,
+  inactive,
+}: ListingCardProps) {
   const { colors } = useTheme();
   const isEbay = listing.platform.toLowerCase() === "ebay";
 
@@ -46,7 +54,11 @@ export default function ListingCard({ listing, onPress, onSave, isSaved }: Listi
       activeOpacity={0.8}
     >
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: listing.image_url }} style={styles.image} resizeMode="cover" />
+        <Image
+          source={{ uri: listing.image_url }}
+          style={[styles.image, inactive && styles.imageInactive]}
+          resizeMode="cover"
+        />
         <View
           style={[
             styles.platformBadge,
@@ -55,7 +67,14 @@ export default function ListingCard({ listing, onPress, onSave, isSaved }: Listi
         >
           <Text style={styles.platformBadgeText}>{platformLabel(listing.platform)}</Text>
         </View>
-        {listing.confidence_label === "similar" && (
+        {inactive && (
+          <View style={[styles.similarBadge, { backgroundColor: colors.chipBackground }]}>
+            <Text style={[styles.similarBadgeText, { color: colors.chipText }]}>
+              No longer available
+            </Text>
+          </View>
+        )}
+        {!inactive && listing.confidence_label === "similar" && (
           <View style={[styles.similarBadge, { backgroundColor: colors.chipBackground }]}>
             <Text style={[styles.similarBadgeText, { color: colors.chipText }]}>
               Similar match
@@ -104,6 +123,9 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 3 / 4,
     borderRadius: 12,
+  },
+  imageInactive: {
+    opacity: 0.45,
   },
   platformBadge: {
     position: "absolute",
