@@ -171,6 +171,13 @@ export default function ListingDetailScreen() {
         {linkError && (
           <Text style={[styles.linkError, { color: colors.error }]}>{linkError}</Text>
         )}
+
+        {isEbay && (
+          <Text style={[styles.disclosure, { color: colors.textSecondary }]}>
+            Listing details and prices are provided by eBay. GrailSeeker is not
+            affiliated with or endorsed by eBay Inc.
+          </Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -251,6 +258,12 @@ const styles = StyleSheet.create({
   linkError: {
     marginTop: 8,
     fontSize: 14,
+    textAlign: "center",
+  },
+  disclosure: {
+    marginTop: 16,
+    fontSize: 12,
+    lineHeight: 17,
     textAlign: "center",
   },
   fallbackContainer: {

@@ -74,13 +74,14 @@ def create_app() -> FastAPI:
         )
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
-    from app.routers import auth, history, listings, rate_limit, saved, search
+    from app.routers import account, auth, history, listings, rate_limit, saved, search
 
     app.include_router(search.router)
     app.include_router(listings.router)
     app.include_router(saved.router)
     app.include_router(history.router)
     app.include_router(auth.router)
+    app.include_router(account.router)
     app.include_router(rate_limit.router)
 
     @app.get("/health")

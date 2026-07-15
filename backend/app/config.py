@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_jwt_secret: str = ""
+    # Server-only admin key; required for account deletion (App Store
+    # guideline 5.1.1(v)). NEVER ship this to the mobile app.
+    supabase_service_role_key: str = ""
 
     # Loopback only: the Cloudflare tunnel connects to localhost, so the API
     # never needs to listen on the LAN.

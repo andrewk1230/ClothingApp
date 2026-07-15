@@ -15,3 +15,11 @@ export const USER_DAILY_LIMIT = 50;
 
 export const THEME_PREFERENCE_KEY = "theme_preference";
 export const ONBOARDING_COMPLETE_KEY = "onboarding_complete";
+
+// Hosted from the repo's docs/ folder via GitHub Pages (see HANDOFF.md).
+// Required by App Store guidelines 5.1.1(i) (privacy policy accessible
+// in-app) and 1.5 (support contact).
+export const PRIVACY_POLICY_URL =
+  "https://andrewk1230.github.io/ClothingApp/privacy-policy";
+export const TERMS_URL = "https://andrewk1230.github.io/ClothingApp/terms";
+export const SUPPORT_URL = "https://andrewk1230.github.io/ClothingApp/support";

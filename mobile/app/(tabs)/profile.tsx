@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { useFocusEffect, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,9 +13,26 @@ import {
 } from "react-native";
 
 import HistoryRow, { HistoryEntry } from "../../components/HistoryRow";
+import {
+  PRIVACY_POLICY_URL,
+  SUPPORT_URL,
+  TERMS_URL,
+} from "../../constants/config";
 import { useAuth } from "../../hooks/useAuth";
 import { ThemePreference, useTheme } from "../../hooks/useTheme";
 import api from "../../lib/api";
+
+const LEGAL_LINKS: { label: string; url: string }[] = [
+  { label: "Privacy Policy", url: PRIVACY_POLICY_URL },
+  { label: "Terms of Service", url: TERMS_URL },
+  { label: "Support", url: SUPPORT_URL },
+];
+
+function openLegalLink(url: string) {
+  WebBrowser.openBrowserAsync(url).catch(() => {
+    // Best-effort; nothing useful to show if the browser fails to open.
+  });
+}
 
 interface RateLimitInfo {
   limit: number;
@@ -38,6 +56,7 @@ export default function ProfileScreen() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -104,6 +123,56 @@ export default function ProfileScreen() {
     ]);
   }, [signOut]);
 
+  // App Store guideline 5.1.1(v): account deletion must be available in-app
+  // and remove the account plus all associated data.
+  const performAccountDeletion = useCallback(async () => {
+    setDeletingAccount(true);
+    try {
+      await api.delete("/api/v1/account");
+      // The auth user no longer exists; clear the local session. Errors are
+      // ignored — the server-side account is already gone.
+      await signOut();
+      Alert.alert(
+        "Account deleted",
+        "Your account, saved items, and search history have been permanently deleted."
+      );
+    } catch {
+      Alert.alert(
+        "Couldn't delete account",
+        "Something went wrong and nothing was deleted. Please try again later."
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  }, [signOut]);
+
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      "Delete Account",
+      "This permanently deletes your account, saved items, and search history.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () =>
+            Alert.alert(
+              "Are you sure?",
+              "This cannot be undone.",
+              [
+                { text: "Keep my account", style: "cancel" },
+                {
+                  text: "Delete everything",
+                  style: "destructive",
+                  onPress: performAccountDeletion,
+                },
+              ]
+            ),
+        },
+      ]
+    );
+  }, [performAccountDeletion]);
+
   if (authLoading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]} />
@@ -125,6 +194,16 @@ export default function ProfileScreen() {
             Sign In
           </Text>
         </TouchableOpacity>
+        {/* Reachable without an account (App Store guideline 5.1.1(i)). */}
+        <View style={styles.gateLinks}>
+          {LEGAL_LINKS.map((link) => (
+            <TouchableOpacity key={link.label} onPress={() => openLegalLink(link.url)}>
+              <Text style={[styles.gateLinkText, { color: colors.textSecondary }]}>
+                {link.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     );
   }
@@ -253,12 +332,52 @@ export default function ProfileScreen() {
 
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+        >
+          <Text style={[styles.settingLabel, { color: colors.error }]}>
+            {deletingAccount ? "Deleting account…" : "Delete Account"}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
         <View style={styles.settingRow}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>
             About
           </Text>
           <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
             GrailSeeker v{version}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        LEGAL
+      </Text>
+      <View style={[styles.section, { backgroundColor: colors.surface }]}>
+        {LEGAL_LINKS.map((link, index) => (
+          <View key={link.label}>
+            {index > 0 && (
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            )}
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => openLegalLink(link.url)}
+            >
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                {link.label}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={styles.settingRow}>
+          <Text style={[styles.disclosureText, { color: colors.textSecondary }]}>
+            GrailSeeker is not affiliated with or endorsed by eBay Inc. Listings
+            and prices are provided by eBay.
           </Text>
         </View>
       </View>
@@ -298,6 +417,20 @@ const styles = StyleSheet.create({
   gateButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  gateLinks: {
+    flexDirection: "row",
+    gap: 20,
+    marginTop: 32,
+  },
+  gateLinkText: {
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
+  disclosureText: {
+    fontSize: 12,
+    lineHeight: 17,
+    flex: 1,
   },
   header: {
     marginBottom: 24,
