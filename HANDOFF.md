@@ -1,8 +1,12 @@
-# GrailSeeker — Session Handoff (2026-07-14)
+# GrailSeeker — Session Handoff (2026-07-15)
 
-State of the project after the security-hardening session (which followed the
-end-to-end implementation session). Read alongside [PRD.md](../PRD.md)
-(product spec) and [README.md](README.md) (setup).
+State of the project after the security-hardening session and the PRD audit
+(which followed the end-to-end implementation session). Read alongside
+[PRD.md](../PRD.md) (product spec) and [README.md](README.md) (setup).
+
+**Start here:** the "Next session — prioritized work plan" section below is
+the marching order. Everything in it is self-contained code/writing work that
+needs no credentials or hardware.
 
 ## Where things stand
 
@@ -114,6 +118,56 @@ config-driven (`app/config.py`, documented in `.env.example`):
 during tunnel bring-up). P2 if open-sourcing: rotate Supabase JWT + eBay
 secrets if ever in doubt; SECURITY.md; `pip-audit`/`npm audit`/Dependabot;
 document JWKS (not the HS256 legacy secret) as the example auth config.
+
+## PRD audit (2026-07-15) — full compliance check
+
+Every buildable requirement in PRD §4–§8 and §10–§13 was audited against the
+code and is implemented, with these findings:
+
+**Documented deviations (deliberate, see "Decisions made"):** 4-of-10
+auto-detected categories (Option A); price inputs+presets instead of a slider;
+ended listings soft-deleted (`is_active=False`, excluded from search) instead
+of removed from the DB; `/find` unmetered with an abuse cap.
+
+**Known code gaps (the only ones):**
+1. **History tap-through** — `search_history` stores `bbox`, `category`, and
+   `result_ids`, but the Profile screen's history rows only support delete;
+   there is no way to re-open a past search's results. Biggest-value remaining
+   feature work.
+2. **Result "streaming" (§4.3)** — skeleton cards exist but all fill at once;
+   the backend returns all 20 results in one response. Cosmetic; low priority.
+
+**PRD self-contradiction, resolved:** §5.2 says the manual crop tool is
+"always-visible" but §4.2 and the §12 matrix say logged-in only. Implementation
+follows §4.2/§12 (logged-in only).
+
+## Next session — prioritized work plan (no physical resources needed)
+
+1. **History tap-through** (closes PRD gap #1): backend endpoint to fetch
+   listings for a history entry's stored `result_ids` (preserve stored order;
+   handle since-deactivated listings), make Profile history rows navigate to a
+   results view, tests for ownership/401/order. Mind the Expo SDK 56 gotchas
+   below.
+2. **Windows bring-up runbook**: RUNBOOK.md + PowerShell scripts for the GPU
+   PC — Docker Postgres (strong `POSTGRES_PASSWORD` + `ENVIRONMENT=production`
+   BEFORE first `compose up`), ROCm backend install (`scripts/validate_rocm.py`
+   exists), running the API as a service, `scripts/tunnel.sh`, smoke tests.
+3. **§9 evaluation harness**: labeling template matching the PRD two-level
+   taxonomy, a runner that feeds labeled images through `/segment`+`/find`,
+   and a metrics report. Humans then only label the 200–500 images.
+4. **eBay sandbox dry-run**: sandbox creds are in `.env`; run a small
+   `seed_db.py` ingest on the Mac to shake out Browse-API surprises before the
+   50k production ingest. (Note: `.env` currently points `EBAY_API_URL`/
+   `EBAY_AUTH_URL` at production hosts — switch to sandbox hosts for this.)
+5. **Open-sourcing hygiene (P2)**: SECURITY.md; run `pip-audit` + `npm audit`
+   and fix; Dependabot config; document JWKS (not HS256) as the example auth
+   setup.
+6. **Result streaming** (optional, PRD gap #2) — only if the demo needs it.
+
+**Do NOT attempt (needs the user):** pushing to GitHub (ask first — remote
+holds stale partial state that the push will supersede), eBay production
+credentials, Supabase dashboard, Apple/TestFlight, physical Windows setup,
+demo video.
 
 ## Gotchas for the next session
 
