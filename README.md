@@ -1,4 +1,4 @@
-# GrailSeeker
+# FitSnap
 
 Visual search engine for second-hand clothing. Upload a photo, tap a detected garment, and get visually similar purchasable listings from resale platforms — no keyword search required.
 
