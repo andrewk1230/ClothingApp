@@ -1,4 +1,4 @@
-# GrailSeeker
+# FitSnap
 
 **Find the clothes you see, not the words you'd have to guess.**
 
