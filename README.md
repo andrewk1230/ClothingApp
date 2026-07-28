@@ -1,126 +1,75 @@
 # GrailSeeker
 
-Visual search engine for second-hand clothing. Upload a photo, tap a detected garment, and get visually similar purchasable listings from resale platforms — no keyword search required.
+**Find the clothes you see, not the words you'd have to guess.**
 
-GrailSeeker is **not** a marketplace: it doesn't host inventory or process transactions. It links out to existing listings on external platforms (eBay first, Depop/Poshmark/ThredUp planned for v2+).
+You spot a jacket in a photo — the exact wash, the exact cut, the exact vibe. Then you open a shopping app and stall out, typing "brown vintage bomber leather worn" and scrolling through a hundred things that aren't it.
 
-**Core loop:** Upload photo → tap detected garment → see matching listings → buy on eBay.
+GrailSeeker skips the words. Take a picture or drop in a screenshot, tap the piece you want, and it shows you real, buyable second-hand listings that actually look like it.
 
-## Why
+---
 
-Keyword search is broken for fashion — you can't type a "vibe," a specific denim fade, or a silhouette into a search bar. GrailSeeker replaces keyword search with visual search powered by computer vision and vector similarity, so users can screenshot an outfit from social media and find a purchasable equivalent.
+## How it works
 
-## Tech Stack
+**1. Bring a photo.**
+Snap something on the street, or pull a screenshot from your camera roll — an outfit from Instagram, a still from a runway video, a friend's fit pic.
 
-| Layer | Technology |
-|---|---|
-| Mobile app | React Native + Expo SDK (Expo Router) |
-| Backend API | FastAPI (Python) |
-| Database | PostgreSQL + pgvector |
-| Vision model | CLIP ViT (pre-trained, via ROCm on AMD GPU) |
-| Segmentation model | YOLOv8 fine-tuned on DeepFashion2 |
-| Data ingestion | eBay Browse API (official, 5,000 calls/day free tier) |
-| Task scheduling | APScheduler (in-process) |
-| Auth | Supabase Auth (Google + Apple sign-in) |
-| Tunneling | Cloudflare Tunnel |
-| Image storage | None — processed in memory, discarded after search |
+**2. Tap what you want.**
+GrailSeeker outlines the clothes it sees in the picture. Tap the jacket, or the pants, or the dress. Only interested in the whole look? Search the entire image instead. Want something the outlines missed — the boots, the bag, the hat? Drag a box around it yourself.
 
-## Architecture
+**3. Shop the matches.**
+You get up to 20 second-hand listings ranked by how closely they resemble what you tapped. Each one tells you how confident the match is, so you know the difference between "that's the one" and "close enough to consider." Tap any result to go straight to the listing and buy it.
 
-```
-Mobile App (Expo)  →  HTTPS via Cloudflare Tunnel  →  FastAPI backend
-                                                          │
-                                        ┌─────────────────┼─────────────────┐
-                                        ▼                 ▼                 ▼
-                                 PostgreSQL +        eBay Browse API   Supabase Auth
-                                 pgvector            + APScheduler     (Google/Apple)
-                                 (listings,
-                                  embeddings)
-```
+That's the whole thing. No filters to configure, no brand names to know, no search terms to invent.
 
-The backend runs self-hosted on a Windows PC (AMD Ryzen 7 7700, RX 9070 XT 16GB via ROCm), exposed to the mobile app over a Cloudflare Tunnel. There's no cloud fallback in v1 — if the host machine sleeps or loses internet, the API is down.
+---
 
-## Repo Layout
+## What you can find
 
-```
-ClothingApp/
-├── backend/          FastAPI app, ML pipeline (CLIP + YOLOv8), eBay ingestion
-│   ├── app/           API routes, models, schemas, services, ML inference
-│   ├── scraper/        eBay Browse API client, ingestion + cleanup jobs, scheduler
-│   ├── alembic/         DB migrations
-│   └── tests/
-├── mobile/           Expo Router app (camera/picker, segmentation UI, results, auth)
-├── scripts/          Setup & ops scripts (seed DB, download model weights, tunnel, validation)
-└── docker-compose.yml  Local Postgres + pgvector
-```
+Real second-hand listings — currently from eBay's live marketplace, with more resale platforms on the way. Everything you see is something a real person is actually selling right now.
 
-## Getting Started
+GrailSeeker recognizes tops, outerwear, bottoms, and dresses on its own. For shoes, bags, hats, sunglasses, and jewelry, draw a box around the item and it searches that instead.
 
-### Prerequisites
-- Node.js + npm, Python 3.11+
-- Docker (for local Postgres + pgvector), or a Postgres instance with the `pgvector` extension
-- An [eBay Developer](https://developer.ebay.com) application (Browse API client ID/secret)
-- A [Supabase](https://supabase.com) project (Auth)
-- (Optional, for local inference) an AMD/ROCm or CUDA GPU — CPU works but is slow for CLIP/YOLOv8
+---
 
-### Backend
+## Free to use, better when you sign in
 
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+**Without an account**, you can upload and search right away — 5 searches a day, no sign-up wall.
 
-cd .. && docker compose up -d          # starts Postgres + pgvector
-cp .env.example .env                   # fill in Supabase + eBay credentials
-cd backend && alembic upgrade head     # run DB migrations
+**Sign in with Google or Apple** and you get:
 
-python ../scripts/download_weights.py  # fetch YOLOv8 DeepFashion2 weights
-python -m scripts.seed_db              # (optional) seed initial eBay listings
+- **50 searches a day** instead of 5
+- **Price filters** — set your budget and only see what fits it
+- **Search history** — every search you've run, saved, so you can go back to that one jacket you found last Tuesday
+- **Saved items** — a wishlist for the pieces you're not ready to buy yet
 
-fastapi dev app/main.py                # start the API on :8000
-```
+---
 
-Environment variables are documented in [.env.example](.env.example) — database URL, Supabase keys, eBay client credentials, CLIP/YOLO model config, rate limits, and image processing limits.
+## Your photos stay yours
 
-To expose the API to the mobile app over HTTPS:
+GrailSeeker never stores the pictures you upload. Your photo is analyzed the moment you send it and discarded immediately after — it's never saved to a server, never added to a dataset, never used for anything but finding your matches.
 
-```bash
-./scripts/tunnel.sh
-```
+If you sign in, your saved items and search history are tied to your account and yours to delete.
 
-### Mobile
+---
 
-```bash
-cd mobile
-npm install
-npm start          # then press i (iOS), a (Android), or w (web) — or scan the QR code in Expo Go
-```
+## What GrailSeeker isn't
 
-Configure the app via a `mobile/.env` (or shell env) with Expo public variables:
+It isn't a store. We don't hold inventory, take payments, ship anything, or handle returns. GrailSeeker finds the listing — you buy it from the seller on their platform, under their terms.
 
-```bash
-EXPO_PUBLIC_API_BASE_URL=https://<your-tunnel-or-local>:8000   # defaults to http://localhost:8000
-EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
-```
+It also isn't a barcode scanner or an exact-product lookup. It finds things that *look* like what you showed it. Sometimes that's the identical piece; often it's a better one you'd never have thought to search for.
 
-Without the Supabase variables the app still runs in guest mode; the login screen shows "Sign-in is not configured yet". Google/Apple providers must be enabled in the Supabase dashboard with the app's `grailseeker://` redirect URL allowed.
+---
 
-## Features (v1)
+## Where things stand
 
-- **Upload:** camera capture or photo library picker; images processed in memory only, never persisted
-- **Garment segmentation:** auto-detected bounding boxes for garments (tops, outerwear, bottoms, dresses — the DeepFashion2 class set); accessories (footwear, bags, headwear, jewelry, eyewear) are searchable via the always-available "Search entire image" fallback or the manual rectangle crop for logged-in users
-- **Visual search:** top 20 similar listings per tapped garment, ranked by CLIP embedding cosine similarity via pgvector
-- **Results:** confidence-labeled matches ("Similar match" between 0.4–0.7 similarity, hidden below 0.4), tap-through to the listing on eBay
-- **Guest vs. logged-in:** guests get full upload/search; logged-in users (Supabase Auth) additionally get price filters, search history, and a saved items/wishlist
-- **Rate limits:** 5 uploads/day (guest), 50 uploads/day (logged-in)
+The app is built and working end to end: upload, detect, search, results, sign-in, saved items, history, price filters, dark mode. It's not on the App Store yet — the remaining work is going live: production marketplace access, seeding the catalog, and getting builds through TestFlight and review.
 
-See [PRD.md](../PRD.md) for the full product spec, screen list, data pipeline, and out-of-scope items.
+---
 
-## Status
+## More
 
-Phases 0–6 complete: full vertical slice (upload → segment → results → listing), Supabase auth with Google/Apple OAuth, rate limiting, saved items, search history, manual crop, price filters, dark mode, offline handling, and a passing backend test suite. Security hardening for self-hosting is in place: production mode (`ENVIRONMENT=production`) disables API docs and trusts only Cloudflare's client-IP header, Postgres binds to loopback with an env-driven password, `/find` has an abuse cap, listing stale-checks are throttled to protect the eBay call budget, oversized images are rejected before decode, and unhandled errors return a generic 500.
+- **Privacy Policy** — [docs/privacy-policy.md](docs/privacy-policy.md)
+- **Terms of Use** — [docs/terms.md](docs/terms.md)
+- **Support** — [docs/support.md](docs/support.md)
 
-Remaining for launch (requires physical resources): eBay production credentials + initial 50k-listing seed on the Windows GPU host, Cloudflare Tunnel bring-up, Supabase OAuth provider configuration, EAS/TestFlight builds on a Mac with an Apple developer account, and the hand-labeled evaluation dataset (PRD §9).
-
-Known scope decision: the DeepFashion2 segmentation model detects garments only (4 categories). Accessories are covered by whole-image search and manual crop — see PRD §4.2 vs. §8.1.
+Building or running GrailSeeker yourself? Start with [RUNBOOK.md](RUNBOOK.md) for deployment and [HANDOFF.md](HANDOFF.md) for the current engineering state. The full product spec lives in [PRD.md](../PRD.md).
